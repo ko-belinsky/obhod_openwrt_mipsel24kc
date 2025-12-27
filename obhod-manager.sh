@@ -33,11 +33,11 @@ install_bypass() {
     echo ""
     echo "=== Установка обхода ==="
     echo ""
-
+    
     step "Обновление списка пакетов..."
     opkg update > /dev/null 2>&1
     success "Список пакетов обновлен"
-
+    
     step "Установка модулей ядра..."
     for pkg in kmod-tun kmod-ipt-nat iptables-nft; do
         if ! opkg list-installed | grep -q "^${pkg} "; then
@@ -45,7 +45,7 @@ install_bypass() {
         fi
     done
     success "Модули установлены"
-
+    
     step "Установка byedpi..."
     if ! opkg list-installed | grep -q "^byedpi "; then
         BYEDPI_URL="https://github.com/spvkgn/ByeDPI-OpenWrt/releases/download/v0.17-24.10/byedpi_0.17-r1_mipsel_24kc.ipk"
@@ -60,7 +60,7 @@ install_bypass() {
     else
         success "byedpi уже установлен"
     fi
-
+    
     step "Установка hev-socks5-tunnel..."
     if ! opkg list-installed | grep -q "^hev-socks5-tunnel "; then
         opkg install hev-socks5-tunnel > /dev/null 2>&1
@@ -68,7 +68,7 @@ install_bypass() {
     else
         success "hev-socks5-tunnel уже установлен"
     fi
-
+    
     step "Установка https-dns-proxy..."
     if ! opkg list-installed | grep -q "^https-dns-proxy "; then
         opkg install https-dns-proxy > /dev/null 2>&1
@@ -76,7 +76,7 @@ install_bypass() {
     else
         success "https-dns-proxy уже установлен"
     fi
-
+    
     step "Настройка byedpi..."
     cat > /etc/config/byedpi << 'EOFUCI'
 config byedpi 'main'
@@ -129,7 +129,7 @@ speedtest.net
 ntc.party
 EOFHOSTS
     success "byedpi настроен"
-
+    
     step "Настройка hev-socks5-tunnel..."
     mkdir -p /etc/hev-socks5-tunnel
     cat > /etc/hev-socks5-tunnel/main.yml << 'EOFYAML'
@@ -153,32 +153,36 @@ misc:
   udp-read-write-timeout: 60000
   limit-nofile: 65535
 EOFYAML
-    # Включаем сервис
+    # Создаем или обновляем конфигурацию UCI
+    if ! uci get hev-socks5-tunnel.config > /dev/null 2>&1; then
+        uci add hev-socks5-tunnel config
+    fi
+    uci set hev-socks5-tunnel.config.conffile='/etc/hev-socks5-tunnel/main.yml'
     uci set hev-socks5-tunnel.config.enabled='1'
     uci commit hev-socks5-tunnel
     success "hev-socks5-tunnel настроен и включен"
-
+    
     step "Настройка DNS-over-HTTPS..."
     uci delete https-dns-proxy.@https-dns-proxy[0] > /dev/null 2>&1 || true
     uci delete https-dns-proxy.@https-dns-proxy[0] > /dev/null 2>&1 || true
-
+    
     uci add https-dns-proxy https-dns-proxy
     uci set https-dns-proxy.@https-dns-proxy[-1].resolver_url='https://cloudflare-dns.com/dns-query'
     uci set https-dns-proxy.@https-dns-proxy[-1].listen_port='5053'
-
+    
     uci add https-dns-proxy https-dns-proxy
     uci set https-dns-proxy.@https-dns-proxy[-1].resolver_url='https://1.1.1.1/dns-query'
     uci set https-dns-proxy.@https-dns-proxy[-1].listen_port='5054'
-
+    
     uci commit https-dns-proxy
     success "DNS-over-HTTPS настроен"
-
+    
     step "Включение автозапуска..."
     /etc/init.d/byedpi enable > /dev/null 2>&1
     /etc/init.d/hev-socks5-tunnel enable > /dev/null 2>&1
     /etc/init.d/https-dns-proxy enable > /dev/null 2>&1
     success "Автозапуск включен"
-
+    
     step "Запуск byedpi..."
     /etc/init.d/byedpi restart > /dev/null 2>&1
     sleep 3
@@ -188,12 +192,12 @@ EOFYAML
     else
         error "byedpi не запустился"
     fi
-
+    
     step "Запуск https-dns-proxy..."
     /etc/init.d/https-dns-proxy restart > /dev/null 2>&1
     sleep 2
     success "https-dns-proxy запущен"
-
+    
     step "Запуск hev-socks5-tunnel..."
     # Ждем, пока byedpi полностью запустится
     sleep 2
@@ -218,10 +222,10 @@ EOFYAML
             error "hev-socks5-tunnel не запустился, проверьте логи"
         fi
     fi
-
+    
     step "Настройка правил iptables..."
     LAN_NET=$(uci get network.lan.ipaddr | cut -d. -f1-3).0/24
-
+    
     # Создаем init.d скрипт с использованием procd triggers
     cat > /etc/init.d/apply-proxy-rules << 'EOFINIT'
 #!/bin/sh /etc/rc.common
@@ -241,14 +245,14 @@ apply_rules() {
         fi
         sleep 1
     done
-
+    
     # Применяем правила
     LAN_NET=$(uci get network.lan.ipaddr 2>/dev/null | cut -d. -f1-3).0/24
     if [ -n "$LAN_NET" ] && [ "$LAN_NET" != ".0/24" ]; then
         # Удаляем старые правила
         iptables-nft -t nat -D PREROUTING -s $LAN_NET -p tcp --dport 80 -j REDIRECT --to-port 1080 2>/dev/null || true
         iptables-nft -t nat -D PREROUTING -s $LAN_NET -p tcp --dport 443 -j REDIRECT --to-port 1080 2>/dev/null || true
-
+        
         # Добавляем новые правила
         iptables-nft -t nat -A PREROUTING -s $LAN_NET -p tcp --dport 80 -j REDIRECT --to-port 1080 2>/dev/null || true
         iptables-nft -t nat -A PREROUTING -s $LAN_NET -p tcp --dport 443 -j REDIRECT --to-port 1080 2>/dev/null || true
@@ -280,7 +284,7 @@ stop_service() {
 EOFINIT
     chmod +x /etc/init.d/apply-proxy-rules
     /etc/init.d/apply-proxy-rules enable > /dev/null 2>&1
-
+    
     # Также добавляем простой скрипт в rc.local как резервный вариант
     # Удаляем старые записи
     sed -i '/apply-proxy-rules/d' /etc/rc.local 2>/dev/null || true
@@ -293,12 +297,12 @@ EOFINIT
 exit 0
 EOFRC
     fi
-
+    
     # Применяем правила напрямую сейчас
     iptables-nft -t nat -A PREROUTING -s ${LAN_NET} -p tcp --dport 80 -j REDIRECT --to-port 1080 2>/dev/null || true
     iptables-nft -t nat -A PREROUTING -s ${LAN_NET} -p tcp --dport 443 -j REDIRECT --to-port 1080 2>/dev/null || true
     success "Правила iptables настроены и будут применяться при загрузке"
-
+    
     echo ""
     success "Установка завершена!"
 }
@@ -308,7 +312,7 @@ check_status() {
     echo ""
     echo "=== Статус обхода ==="
     echo ""
-
+    
     # Проверка пакетов
     echo "📦 Пакеты:"
     for pkg in byedpi hev-socks5-tunnel https-dns-proxy; do
@@ -319,7 +323,7 @@ check_status() {
             error "  ${pkg} не установлен"
         fi
     done
-
+    
     # Проверка модулей
     echo ""
     echo "🔧 Модули ядра:"
@@ -330,7 +334,7 @@ check_status() {
             error "  ${mod} не установлен"
         fi
     done
-
+    
     # Проверка сервисов
     echo ""
     echo "🔄 Сервисы:"
@@ -341,7 +345,7 @@ check_status() {
             error "  ${svc} - не запущен"
         fi
     done
-
+    
     # Проверка портов
     echo ""
     echo "🔌 Порты:"
@@ -350,14 +354,14 @@ check_status() {
     else
         error "  byedpi не слушает на порту 1080"
     fi
-
+    
     DOH_PORTS=$(netstat -tlnp 2>/dev/null | grep -E ':(5053|5054) ' | wc -l)
     if [ "$DOH_PORTS" -ge 2 ]; then
         success "  https-dns-proxy слушает на портах 5053, 5054"
     else
         error "  https-dns-proxy не слушает на портах 5053, 5054"
     fi
-
+    
     # Проверка TUN интерфейса
     echo ""
     echo "🌐 Интерфейсы:"
@@ -367,7 +371,7 @@ check_status() {
     else
         error "  TUN интерфейс tun0 не создан"
     fi
-
+    
     # Проверка правил iptables
     echo ""
     echo "🛡️  Правила iptables:"
@@ -377,7 +381,7 @@ check_status() {
     else
         error "  Правила не настроены"
     fi
-
+    
     # Проверка DNS
     echo ""
     echo "🔍 DNS:"
@@ -386,14 +390,14 @@ check_status() {
     else
         error "  dnsmasq не использует DoH"
     fi
-
+    
     DOH_SERVERS=$(uci get dhcp.@dnsmasq[0].server 2>/dev/null | grep -o '127.0.0.1#505' | wc -l)
     if [ "$DOH_SERVERS" -ge 2 ]; then
         success "  DoH серверы настроены: ${DOH_SERVERS}"
     else
         error "  DoH серверы не настроены"
     fi
-
+    
     # Тест DNS запросов
     echo ""
     echo "🌍 Тест DNS запросов:"
@@ -405,7 +409,7 @@ check_status() {
             error "  ${domain} - не разрешается"
         fi
     done
-
+    
     # Тест доступности сети
     echo ""
     echo "📡 Тест доступности сети:"
@@ -414,13 +418,13 @@ check_status() {
     else
         error "  Пинг 8.8.8.8 - FAIL"
     fi
-
+    
     if ping -c 1 -W 2 1.1.1.1 > /dev/null 2>&1; then
         success "  Пинг 1.1.1.1 - OK"
     else
         error "  Пинг 1.1.1.1 - FAIL"
     fi
-
+    
     # Тест доменов
     echo ""
     echo "🌐 Тест доменов:"
@@ -431,7 +435,7 @@ check_status() {
             error "  ${domain} - недоступен"
         fi
     done
-
+    
     echo ""
 }
 
@@ -445,25 +449,25 @@ remove_bypass() {
         info "Отменено"
         return
     fi
-
+    
     step "Остановка сервисов..."
     /etc/init.d/byedpi stop > /dev/null 2>&1
     /etc/init.d/hev-socks5-tunnel stop > /dev/null 2>&1
     /etc/init.d/https-dns-proxy stop > /dev/null 2>&1
     success "Сервисы остановлены"
-
+    
     step "Отключение автозапуска..."
     /etc/init.d/byedpi disable > /dev/null 2>&1
     /etc/init.d/hev-socks5-tunnel disable > /dev/null 2>&1
     /etc/init.d/https-dns-proxy disable > /dev/null 2>&1
     /etc/init.d/apply-proxy-rules disable > /dev/null 2>&1
     success "Автозапуск отключен"
-
+    
     step "Удаление правил iptables..."
     iptables-nft -t nat -F PREROUTING 2>/dev/null || true
     rm -f /etc/firewall.user
     success "Правила удалены"
-
+    
     step "Удаление пакетов..."
     for pkg in byedpi hev-socks5-tunnel https-dns-proxy; do
         if opkg list-installed | grep -q "^${pkg} "; then
@@ -471,7 +475,7 @@ remove_bypass() {
             success "  ${pkg} удален"
         fi
     done
-
+    
     step "Удаление модулей..."
     for mod in kmod-ipt-nat iptables-nft; do
         if opkg list-installed | grep -q "^${mod} "; then
@@ -479,9 +483,9 @@ remove_bypass() {
             success "  ${mod} удален"
         fi
     done
-
+    
     # kmod-tun не удаляем, может использоваться другими сервисами
-
+    
     step "Удаление конфигураций..."
     rm -rf /etc/config/byedpi /etc/config/byedpi.hosts
     rm -rf /etc/hev-socks5-tunnel
@@ -490,7 +494,7 @@ remove_bypass() {
     uci delete https-dns-proxy.@https-dns-proxy[0] > /dev/null 2>&1 || true
     uci commit https-dns-proxy > /dev/null 2>&1 || true
     success "Конфигурации удалены"
-
+    
     echo ""
     success "Удаление завершено!"
 }
@@ -500,12 +504,12 @@ configure_byedpi() {
     echo ""
     echo "=== Конфигурация byedpi ==="
     echo ""
-
+    
     if ! opkg list-installed | grep -q "^byedpi "; then
         error "byedpi не установлен. Сначала выполните установку обхода."
         return
     fi
-
+    
     echo "Текущая конфигурация:"
     CURRENT_OPTS=$(uci get byedpi.main.cmd_opts 2>/dev/null || echo "")
     if [ -n "$CURRENT_OPTS" ]; then
@@ -514,27 +518,27 @@ configure_byedpi() {
         echo "  cmd_opts не установлен"
     fi
     echo ""
-
+    
     echo "Введите новые параметры для cmd_opts:"
     echo "Пример: --split 2 --disorder 6+s --mod-http=h,d"
     echo "Или оставьте пустым для отмены"
     read -p "> " new_opts
-
+    
     if [ -z "$new_opts" ]; then
         info "Отменено"
         return
     fi
-
+    
     step "Применение конфигурации..."
     uci set byedpi.main.cmd_opts="${new_opts}"
     uci commit byedpi
     success "Конфигурация сохранена"
-
+    
     step "Перезапуск byedpi..."
     /etc/init.d/byedpi restart > /dev/null 2>&1
     sleep 2
     success "byedpi перезапущен"
-
+    
     echo ""
     echo "Новая конфигурация:"
     uci get byedpi.main.cmd_opts
@@ -556,7 +560,7 @@ main_menu() {
         echo "5) Выход"
         echo ""
         read -p "Выберите действие [1-5]: " choice
-
+        
         case $choice in
             1)
                 install_bypass
