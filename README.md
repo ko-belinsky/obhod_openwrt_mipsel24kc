@@ -6,13 +6,13 @@
 
 📦 Что устанавливает
 
-    - byedpi от [spvkgn](https://github.com/spvkgn/ByeDPI-OpenWrt) - обход DPI блокировок
+  - byedpi от [spvkgn](https://github.com/spvkgn/ByeDPI-OpenWrt) - обход DPI блокировок
 
-    - hev-socks5-tunnel - SOCKS5 прокси-туннель
+  - hev-socks5-tunnel - SOCKS5 прокси-туннель
 
-    - https-dns-proxy - DNS-over-HTTPS (DoH)
+  - https-dns-proxy - DNS-over-HTTPS (DoH)
 
-    - DNS резолверы: Cloudflare (5053) и 1.1.1.1 (5054)
+  - DNS резолверы: Cloudflare (5053) и 1.1.1.1 (5054)
 
 Автоматические правила iptables - перенаправление трафика
 
