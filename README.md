@@ -33,11 +33,11 @@
 
 1. Подключиться к роутеру по SSH:
 ```
-    ssh root@192.168.1.1
+ssh root@192.168.1.1
 ```
 2. Ввести команду:
 ```
-    sh <(wget -O - https://raw.githubusercontent.com/ko-belinsky/obhod_openwrt_mipsel24kc/refs/heads/main/obhod-manager.sh)
+sh <(wget -O - https://raw.githubusercontent.com/ko-belinsky/obhod_openwrt_mipsel24kc/refs/heads/main/obhod-manager.sh)
 ```
 3. Выбрать действие в меню:
 
