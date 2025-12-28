@@ -41,9 +41,14 @@
 
 🛠️ Установка и использование
 
-```
-sh <(wget -O - https://raw.githubusercontent.com/ko-belinsky/obhod_openwrt_mipsel24kc/refs/heads/main/obhod-manager.sh)
-```
+
+Подключиться к роутеру по ssh, например 
+
+    ssh root@192.168.1.1
+    
+и ввести команду:
+
+    sh <(wget -O - https://raw.githubusercontent.com/ko-belinsky/obhod_openwrt_mipsel24kc/refs/heads/main/obhod-manager.sh)
 
 1) Установить обход   - Полная установка
 2) Статус обхода      - Проверка работы
