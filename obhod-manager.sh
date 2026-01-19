@@ -56,6 +56,8 @@ install_bypass() {
         }
         opkg install "$BYEDPI_FILE" > /dev/null 2>&1
         rm -f "$BYEDPI_FILE"
+		sleep 1
+		/etc/init.d/byedpi start
         success "byedpi установлен"
     else
         success "byedpi уже установлен"
@@ -64,6 +66,8 @@ install_bypass() {
     step "Установка hev-socks5-tunnel..."
     if ! opkg list-installed | grep -q "^hev-socks5-tunnel "; then
         opkg install hev-socks5-tunnel > /dev/null 2>&1
+		sleep 1
+		/etc/init.d/hev-socks5-tunnel start
         success "hev-socks5-tunnel установлен"
     else
         success "hev-socks5-tunnel уже установлен"
@@ -72,6 +76,8 @@ install_bypass() {
     step "Установка https-dns-proxy..."
     if ! opkg list-installed | grep -q "^https-dns-proxy "; then
         opkg install https-dns-proxy > /dev/null 2>&1
+		sleep 1
+		/etc/init.d/https-dns-proxy start
         success "https-dns-proxy установлен"
     else
         success "https-dns-proxy уже установлен"
