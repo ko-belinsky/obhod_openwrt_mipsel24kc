@@ -85,6 +85,10 @@ config byedpi 'main'
 EOFUCI
 
     cat > /etc/config/byedpi.hosts << 'EOFHOSTS'
+imgur.com
+googlesyndication.com
+selfgems.com
+cloudflareinsights.com
 google.com
 googlevideo.com
 googleapis.com
@@ -121,6 +125,7 @@ rutor.info
 rutor.org
 rutracker.org
 nnmclub.to
+nnmstatic.win
 flibusta.is
 x.com
 twimg.com
